@@ -1,0 +1,65 @@
+
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Go wasm</title>
+</head>
+
+<body>
+<script src="./wasm_exec.js"></script>
+<script>
+
+    // polyfill
+    if (!WebAssembly.instantiateStreaming) {
+        WebAssembly.instantiateStreaming = async (resp, importObject) => {
+            const source = await (await resp).arrayBuffer();
+            return await WebAssembly.instantiate(source, importObject);
+        };
+    }
+
+    const go = new Go();
+    let mod, inst;
+
+    WebAssembly.instantiateStreaming(fetch("./main.wasm", {cache: 'no-cache'} ), go.importObject).then(
+        result => {
+            mod = result.module;
+            inst = result.instance;
+            let ptr = inst.exports;
+            let size = inst.length;
+
+            go.run(inst);
+
+            let fileContent = 'row_id\tfull_name\tphone_number\n' +
+                                'a2\tRobert Bart\t0033.44\n' +
+                                'a3\tCharlie Bart\t02\n' +
+                                'a4\tDavid Trab\t04';
+
+            let configJSON = `{
+                                "topic_id": "certification",
+                                "delegates":
+                                    [
+                                        {"public_key" : "rUARZyCdgQMLXe6CJOkHRmQGvASeF7BFMKuKxuxdWgU", "address" : "qedit_1"},
+                                        {"public_key" : "rUARZyCdgQMLXe6CJOkHRmQGvASeF7BFMKuKxuxdWgU", "address" : "qedit_2"},
+                                        {"public_key" : "rUARZyCdgQMLXe6CJOkHRmQGvASeF7BFMKuKxuxdWgU", "address" : "qedit_3"},
+                                        {"public_key" : "rUARZyCdgQMLXe6CJOkHRmQGvASeF7BFMKuKxuxdWgU", "address" : "qedit_4"},
+                                        {"public_key" : "rUARZyCdgQMLXe6CJOkHRmQGvASeF7BFMKuKxuxdWgU", "address" : "qedit_5"}
+                                    ],
+                                "append" : true
+                                }`
+
+            let res = processDataset(configJSON,fileContent);
+            const resObj =  new Uint8Array(res , ptr , size);
+            console.log(resObj);
+            let resStr = new TextDecoder("utf-8").decode(resObj);
+            console.log(resStr);
+            let actualObj = JSON.parse(resStr);
+            console.log(actualObj);
+        }
+    );
+
+</script>
+
+</body>
+</html>
+
